@@ -66,5 +66,5 @@ jobs:
         service_account: ${{ env.APP_SA_EMAIL }}
         # --- env_vars と secrets の設定を削除 ---
 
-    - name: Show Deployed URL
-      run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
+    # - name: Show Deployed URL
+    #   run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
