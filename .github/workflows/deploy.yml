@@ -8,7 +8,7 @@ on:
 env:
   # --- Google Cloud 設定 (必ず自分の値に置き換える) ---
   PROJECT_ID: my-secure-streamlit-app # GCPプロジェクトID
-  PROJECT_NUMBER: your-gcp-project-number # ★★★ GCPプロジェクト番号に置き換え ★★★ (gcloud projects describe my-secure-streamlit-app --format='value(projectNumber)' で確認)
+  PROJECT_NUMBER: your-gcp-project-number # ★★★ GCPプロジェクト番号に置き換え ★★★
   GAR_LOCATION: asia-northeast1 # Artifact Registry のリージョン
   REPOSITORY: my-streamlit-images # Artifact Registry のリポジトリ名
   SERVICE_NAME: my-secure-streamlit-app # Cloud Run のサービス名
@@ -33,74 +33,63 @@ env:
   # SECRET_VALUE_ENV_VAR_NAME: MY_APP_API_KEY_VALUE
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy
-    runs-on: ubuntu-latest
+  build-and-deploy: # インデントレベル 0
+    name: Build and Deploy # インデントレベル 1 (スペース 2)
+    runs-on: ubuntu-latest # インデントレベル 1
 
-    # Workload Identity Federation を使うための権限設定
-    permissions:
-      contents: 'read'
-      id-token: 'write'
+    permissions: # インデントレベル 1
+      contents: 'read' # インデントレベル 2 (スペース 4)
+      id-token: 'write' # インデントレベル 2
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    steps: # インデントレベル 1
+    - name: Checkout code # インデントレベル 2 (スペース 4) - ステップ定義
+      uses: actions/checkout@v4 # インデントレベル 3 (スペース 6)
 
-    # Google Cloud への認証 (WIF を使用)
-    - name: Authenticate to Google Cloud
+    - name: Authenticate to Google Cloud # インデントレベル 2
       id: auth
-      uses: google-github-actions/auth@v2
-      with:
-        workload_identity_provider: ${{ env.WIF_PROVIDER }}
-        service_account: ${{ env.DEPLOY_SA_EMAIL }}
+      uses: google-github-actions/auth@v2 # インデントレベル 3
+      with: # インデントレベル 3
+        workload_identity_provider: ${{ env.WIF_PROVIDER }} # インデントレベル 4 (スペース 8)
+        service_account: ${{ env.DEPLOY_SA_EMAIL }} # インデントレベル 4
 
-    # (任意) Google Cloud SDK (gcloud) のセットアップ
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: ${{ env.PROJECT_ID }}
+    - name: Set up Cloud SDK # インデントレベル 2
+      uses: google-github-actions/setup-gcloud@v2 # インデントレベル 3
+      with: # インデントレベル 3
+        project_id: ${{ env.PROJECT_ID }} # インデントレベル 4
 
-    # Docker イメージのビルドと Artifact Registry へのプッシュ
-    # gcloud auth configure-docker で認証ヘルパーを設定
-    - name: Configure Docker
-      run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev --quiet
+    - name: Configure Docker # インデントレベル 2
+      run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev --quiet # インデントレベル 3
 
-    - name: Build Docker image
-      run: docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+    - name: Build Docker image # インデントレベル 2
+      run: docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} . # インデントレベル 3
 
-    - name: Push Docker image
-      run: docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+    - name: Push Docker image # インデントレベル 2
+      run: docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} # インデントレベル 3
 
     # Cloud Run へのデプロイ
-    - name: Deploy to Cloud Run
+    - name: Deploy to Cloud Run # インデントレベル 2
       id: deploy
-      uses: google-github-actions/deploy-cloudrun@v2
-      with:
-        service: ${{ env.SERVICE_NAME }}
-        region: ${{ env.REGION }}
-        image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-        # アプリケーションが使用するサービスアカウントを指定 (Firestore, Secret Managerアクセス用)
-        service_account: ${{ env.APP_SA_EMAIL }}
+      uses: google-github-actions/deploy-cloudrun@v2 # インデントレベル 3
+      with: # インデントレベル 3
+        service: ${{ env.SERVICE_NAME }} # インデントレベル 4
+        region: ${{ env.REGION }} # インデントレベル 4
+        image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} # インデントレベル 4
+        service_account: ${{ env.APP_SA_EMAIL }} # インデントレベル 4
 
-        # --- ↓↓↓ Secret Manager と環境変数の設定を追加 ↓↓↓ ---
-        # Secret Manager のシークレットを環境変数として Cloud Run に "マウント" する
-        # 注: 今回のアプリコード(main.py)はマウントされた値(MY_APP_API_KEY_VALUE)を直接は使わず、
-        #     Secret ID を使って能動的に取得しに行くため、secretsセクションは必須ではないが設定例として残す。
-        #     もしSecretの値を直接環境変数で使いたい場合は、この secrets セクションを利用し、
-        #     main.py で os.getenv(env.SECRET_VALUE_ENV_VAR_NAME) のように読み込む。
-        # secrets: |
+        # --- ↓↓↓ Secret Manager と環境変数の設定 ↓↓↓ ---
+        # secrets: | # インデントレベル 4
+        #   # この下の行はレベル 5 (スペース 10)
         #   ${{ env.SECRET_VALUE_ENV_VAR_NAME }}=${{ env.SECRET_ID }}:latest
 
-        # アプリケーションが必要とする環境変数を設定
-        env_vars: |
-          # main.py が Secret ID を取得するために使用する環境変数
+        env_vars: | # インデントレベル 4
+          # この下の行はレベル 5 (スペース 10)
           ${{ env.SECRET_ID_ENV_VAR_NAME }}=${{ env.SECRET_ID }}
-          # main.py がプロジェクトIDを取得するために使用する環境変数 (Cloud Runが自動設定する場合もある)
+          # この行もレベル 5
           # GCP_PROJECT=${{ env.PROJECT_ID }}
         # --- ↑↑↑ 設定追加ここまで ↑↑↑ ---
 
-        # flags: '--allow-unauthenticated' # 必要に応じて公開アクセスを許可
+        # flags: '--allow-unauthenticated' # インデントレベル 4
 
     # デプロイされたURLを出力
-    - name: Show Deployed URL
-      run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
+    - name: Show Deployed URL # インデントレベル 2 (前のステップと同じレベル)
+      run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}" # インデントレベル 3
