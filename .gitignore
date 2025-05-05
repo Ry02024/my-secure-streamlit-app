@@ -1,5 +1,6 @@
 
 # Build artifacts
+# Docker Compose
 # Environments
 # Firebase / Emulator
 # IDE / Editor specific
@@ -26,10 +27,13 @@ __pycache__/
 build/
 database-debug.log
 dist/
+docker-compose.override.yml
+emulator-data/  # firebase-tools イメージ使用時のエクスポート先例
 env.bak/
 env/
 firebase-debug.log
 firestore-data/
+firestore-data/ # Docker Compose で永続化する場合のデータディレクトリ
 local_settings.py
 storage-debug.log
 venv.bak/

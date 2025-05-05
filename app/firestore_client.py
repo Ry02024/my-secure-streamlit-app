@@ -3,20 +3,21 @@ import os
 import logging
 
 # Cloud Run 環境では自動的にサービスアカウントが使われる
-# ローカルテスト(Emulator)用に環境変数を確認する処理を追加しても良い
+# ローカルテスト(Emulator)用に環境変数を確認する処理
 try:
-    # GAE_RUNTIME 環境変数は Cloud Run/App Engine で設定される
-    # FIRESTORE_EMULATOR_HOST 環境変数はエミュレータ利用時に設定
-    if os.getenv('GAE_RUNTIME', '') == '' and os.getenv('FIRESTORE_EMULATOR_HOST', '') == '':
-         logging.warning("本番環境でもエミュレータ環境でもないようです。Firestoreクライアントの初期化をスキップします。")
-         # ローカル開発で認証情報ファイルを使う場合などはここで設定
-         # from google.oauth2 import service_account
-         # credentials = service_account.Credentials.from_service_account_file('path/to/key.json')
-         # db = firestore.Client(credentials=credentials)
-         db = None # または適切な初期化
+    if os.getenv('FIRESTORE_EMULATOR_HOST'):
+        # エミュレータ利用時
+        logging.info(f"Using Firestore Emulator at {os.getenv('FIRESTORE_EMULATOR_HOST')}")
+        db = firestore.Client() # エミュレータ利用時も認証なしでClientを作成できる
+    elif os.getenv('GAE_RUNTIME', '') != '':
+        # Cloud Run/App Engine 環境 (本番想定)
+        logging.info("Running in Cloud Run/GAE environment. Initializing Firestore Client with default credentials.")
+        db = firestore.Client()
     else:
-         logging.info("Initializing Firestore Client...")
-         db = firestore.Client()
+        # その他の環境（ローカルだがエミュレータ未使用、など）
+        logging.warning("Not in Cloud Run/GAE or Emulator environment. Firestore client might not be initialized correctly.")
+        # ここでローカルキーファイルでの認証など、別の初期化方法を検討できる
+        db = None # 安全のためNoneにしておく
 
 except Exception as e:
     logging.error(f"Firestore クライアントの初期化に失敗しました: {e}")

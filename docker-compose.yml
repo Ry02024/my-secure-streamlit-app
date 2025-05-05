@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: streamlit_app
+    ports:
+      - "8080:8080" # ホストの8080をコンテナの8080(Streamlit)へ
+    environment:
+      # Emulatorサービス名を指定
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      # ローカルテストであることを示す（GAE_RUNTIMEがない）
+      - GAE_RUNTIME=
+    depends_on:
+      - firestore-emulator
+    networks:
+      - app-network
+
+  firestore-emulator:
+    # firebase/firebase-tools イメージを使用する方がルール適用などが簡単かも
+    # image: firebase/firebase-tools:latest
+    # command: >
+    #   firebase emulators:start --only firestore --import=./init_data --export-on-exit=./emulator_data
+    # volumes:
+    #   - ./firestore.rules:/opt/firebase/firestore.rules # ルールをマウント
+    #   - ./firebase.json:/opt/firebase/firebase.json     # 設定をマウント
+    # ports:
+    #   - "8081:8080" # ホストの8081をコンテナの8080(Emulator)へ
+    #   - "4000:4000" # Emulator UI
+
+    # gcloud イメージを使用する場合
+    image: google/cloud-sdk:emulators
+    container_name: firestore_emulator
+    # command: >
+    #   gcloud beta emulators firestore start --host-port=0.0.0.0:8080 --project=test-project --rules=firestore.rules
+    # 上記コマンドではルールファイル指定が機能しないことがあるため、デフォルト（全許可）で起動する可能性あり
+    command: >
+       gcloud beta emulators firestore start --host-port=0.0.0.0:8080 --project=test-project
+    ports:
+      # Emulator本体のポートはコンテナ間通信用なので公開不要
+      - "4000:4000" # Emulator UI のみホストに公開
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

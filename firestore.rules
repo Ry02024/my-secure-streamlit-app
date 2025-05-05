@@ -4,17 +4,10 @@ service cloud.firestore {
     // ideas コレクションへのアクセス
     match /ideas/{ideaId} {
       // 認証されたユーザー(Cloud Run のサービスアカウント含む)からの読み取りと作成を許可
+      // 本番では request.auth.uid による制御やデータのバリデーションを追加すべき
       allow read, create: if request.auth != null;
       // 更新、削除は今は許可しない
       allow update, delete: if false;
-
-      // (よりセキュアにするなら) 書き込みデータのバリデーション例
-      // function isValidIdea(ideaData) {
-      //   return ideaData.title is string && ideaData.title.size() > 0 && ideaData.title.size() < 100
-      //       && ideaData.description is string && ideaData.description.size() > 0 && ideaData.description.size() < 1000
-      //       && ideaData.timestamp == request.time; // サーバータイムスタンプ強制
-      // }
-      // allow create: if request.auth != null && isValidIdea(request.resource.data);
     }
     // 他のパスはアクセス拒否
     match /{document=**} {

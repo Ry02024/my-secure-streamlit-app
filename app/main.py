@@ -1,41 +1,54 @@
 import streamlit as st
 from app import firestore_client
 import logging
-import os # Secret Manager用にosをインポート
+import os
+from google.cloud import secretmanager # Secret Manager用にインポート
 
 logging.basicConfig(level=logging.INFO)
 
-st.set_page_config(layout="wide") # 横幅を広く使う設定
+st.set_page_config(layout="wide")
 
-st.title("アイデア投稿・閲覧アプリ")
+st.title("アイデア投稿・閲覧アプリ (Cloud Run)") # タイトル変更
 
-# --- (オプション) Secret Managerから値を取得して表示 ---
-# この部分はCloud Runデプロイ後に意味を持つ。ローカル(Emulator)ではSECRET_IDがない場合エラーになる可能性あり。
-# SECRET_ID = "my-app-api-key" # GitHub Actionsから環境変数として渡すことを想定
-# api_key_value = "取得できませんでした"
-# try:
-#     # Secret Manager クライアントを初期化 (Cloud Runでは自動認証)
-#     from google.cloud import secretmanager
-#     if os.getenv('GAE_RUNTIME', '') != '': # Cloud Run環境でのみ実行試行
-#         client = secretmanager.SecretManagerServiceClient()
-#         # 環境変数 PROJECT_ID が必要 (Cloud Runでは自動設定されることが多い)
-#         project_id = os.getenv("PROJECT_ID", None)
-#         if project_id:
-#              name = f"projects/{project_id}/secrets/{SECRET_ID}/versions/latest"
-#              response = client.access_secret_version(request={"name": name})
-#              api_key_value = response.payload.data.decode("UTF-8")
-#              logging.info(f"Secret '{SECRET_ID}' を取得しました。")
-#         else:
-#              logging.warning("環境変数 PROJECT_ID が設定されていません。Secretを取得できません。")
-#     else:
-#         logging.info("Cloud Run環境ではないため、Secret Managerからの取得をスキップします。")
+# --- Secret Managerから値を取得する関数 ---
+# キャッシュを利用して毎回APIを叩かないようにする (@st.cache_data)
+@st.cache_data # 結果をキャッシュ
+def get_secret(project_id, secret_id, version_id="latest"):
+    """Secret Managerからシークレットを取得する"""
+    try:
+        client = secretmanager.SecretManagerServiceClient()
+        name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
+        response = client.access_secret_version(request={"name": name})
+        payload = response.payload.data.decode("UTF-8")
+        logging.info(f"Secret '{secret_id}' version '{version_id}' accessed successfully.")
+        return payload
+    except Exception as e:
+        logging.error(f"Failed to access secret {secret_id}: {e}")
+        return None
 
-# except Exception as e:
-#     logging.error(f"Secret Managerからのシークレット取得中にエラー: {e}")
+# --- Secret Managerから値を取得して表示 ---
+# Cloud Run環境で PROJECT_ID と SECRET_ID が環境変数として設定されている想定
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT") # Cloud Run では GCP_PROJECT が設定されることが多い
+SECRET_ID_TO_FETCH = os.getenv("MY_APP_API_KEY_SECRET_ID", "my-app-api-key") # 環境変数でSecret IDを指定可能に
+api_key_value = "取得失敗 or 未設定"
 
-# st.sidebar.subheader("Secret Managerの値:")
-# st.sidebar.text_input("取得したAPIキー (例)", value=api_key_value, type="password", disabled=True)
-# st.sidebar.caption(f"(取得元: {SECRET_ID})")
+# GCP_PROJECT_ID が取得できた場合のみ実行
+if GCP_PROJECT_ID:
+    logging.info(f"Attempting to fetch secret '{SECRET_ID_TO_FETCH}' from project '{GCP_PROJECT_ID}'")
+    fetched_secret = get_secret(GCP_PROJECT_ID, SECRET_ID_TO_FETCH)
+    if fetched_secret:
+        api_key_value = fetched_secret
+    else:
+        api_key_value = "Secret取得失敗"
+else:
+    logging.warning("GCP_PROJECT environment variable not found. Skipping Secret Manager fetch.")
+    api_key_value = "プロジェクトID未設定"
+
+# サイドバーに表示
+st.sidebar.subheader("Secret Manager の値:")
+st.sidebar.text_input("取得した Secret の値", value=api_key_value, type="password", disabled=True)
+st.sidebar.caption(f"(取得元 Secret ID: {SECRET_ID_TO_FETCH})")
+
 
 # --- レイアウト調整 (2カラム) ---
 col1, col2 = st.columns(2)
@@ -52,7 +65,6 @@ with col1:
                 result_id = firestore_client.add_idea(idea_title, idea_description)
                 if result_id:
                     st.success(f"アイデアを投稿しました！")
-                    # clear_on_submit=True なので rerun は不要かも
                 else:
                     st.error("アイデアの投稿に失敗しました。")
             else:
@@ -66,19 +78,13 @@ with col2:
     if not ideas:
         st.info("まだアイデアは投稿されていません。")
     else:
-        # 見た目を少し改善
-        container = st.container(height=500) # 高さを指定してスクロール可能に
+        container = st.container(height=500)
         with container:
             for idea in ideas:
                 with st.expander(f"{idea.get('title', 'タイトルなし')}"):
                     st.write(f"**説明:**")
-                    st.markdown(f"```\n{idea.get('description', '説明なし')}\n```") # Markdownで表示
-                    # タイムスタンプが存在し、datetimeオブジェクトなら表示
+                    st.markdown(f"```\n{idea.get('description', '説明なし')}\n```")
                     ts = idea.get('timestamp')
                     if ts and hasattr(ts, 'strftime'):
-                         # 日本時間に変換する場合 (pytzが必要になるかも)
-                         # jst = ts + timedelta(hours=9)
-                         # st.caption(f"投稿日時: {jst.strftime('%Y-%m-%d %H:%M:%S')} JST")
                          st.caption(f"投稿日時 (UTC): {ts.strftime('%Y-%m-%d %H:%M:%S')}")
-                    # st.caption(f"ID: {idea.get('id', 'N/A')}") # IDはデバッグ時以外は不要かも
 
