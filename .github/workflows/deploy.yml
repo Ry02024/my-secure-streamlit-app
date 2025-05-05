@@ -1,0 +1,79 @@
+name: Build and Deploy to Cloud Run
+
+on:
+  push:
+    branches: [ main ] # mainブランチにpushされたら実行
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: my-secure-streamlit-app# GCPプロジェクトIDに置き換え
+  GAR_LOCATION: asia-northeast1 # Artifact Registryのリージョン
+  REPOSITORY: my-streamlit-images # Artifact Registryのリポジトリ名
+  SERVICE_NAME: my-secure-streamlit-app # Cloud Runのサービス名
+  REGION: asia-northeast1 # Cloud Runのリージョン
+  APP_SA_EMAIL: my-streamlit-app-runner@YOUR_PROJECT_ID.iam.gserviceaccount.com # Appサービスアカウントのメール
+  DEPLOY_SA_EMAIL: github-actions-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com # Deployサービスアカウントのメール
+  WIF_PROVIDER: projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/providers/github-provider # WIFプロバイダのフルパス
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    # Workload Identity Federation を使うための権限設定
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Google Cloud への認証 (WIF を使用)
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ env.WIF_PROVIDER }}
+        service_account: ${{ env.DEPLOY_SA_EMAIL }}
+
+    # (任意) Google Cloud SDK (gcloud) のセットアップ
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+
+    # Docker イメージのビルドと Artifact Registry へのプッシュ
+    # gcloud auth configure-docker を使うことで Docker コマンドで直接プッシュ可能になる
+    - name: Configure Docker
+      run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
+
+    - name: Build Docker image
+      run: docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+
+    - name: Push Docker image
+      run: docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+
+    # Cloud Run へのデプロイ
+    - name: Deploy to Cloud Run
+      id: deploy
+      uses: google-github-actions/deploy-cloudrun@v2
+      with:
+        service: ${{ env.SERVICE_NAME }}
+        region: ${{ env.REGION }}
+        # プッシュした最新のイメージを指定
+        image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        # アプリケーションが使用するサービスアカウントを指定
+        service_account: ${{ env.APP_SA_EMAIL }}
+        # 必要に応じて環境変数やシークレットを設定
+        # env_vars: |
+        #   KEY1=value1
+        #   KEY2=value2
+        # secrets: |
+        #   API_KEY=your-secret-name:latest # Secret Managerのシークレット名:バージョン
+        # (任意) 一般公開する場合 (通常は推奨しない、API Gatewayなどを検討)
+        # flags: '--allow-unauthenticated'
+
+    # デプロイされたURLを出力
+    - name: Show Deployed URL
+      run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
