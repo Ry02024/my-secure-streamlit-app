@@ -6,19 +6,20 @@ on:
   workflow_dispatch:
 
 env:
+  # --- 基本的な Google Cloud 設定 ---
   PROJECT_ID: my-secure-streamlit-app
-  PROJECT_NUMBER: 154896597931
+  PROJECT_NUMBER: your-gcp-project-number # ★★★ GCPプロジェクト番号に置き換え ★★★ (gcloud projects describe my-secure-streamlit-app --format='value(projectNumber)' で確認)
   GAR_LOCATION: asia-northeast1
   REPOSITORY: my-streamlit-images
   SERVICE_NAME: my-secure-streamlit-app
   REGION: asia-northeast1
+  # ★★★ YOUR_PROJECT_ID を実際のプロジェクトID (my-secure-streamlit-app) に置き換え ★★★
   APP_SA_EMAIL: my-streamlit-app-runner@my-secure-streamlit-app.iam.gserviceaccount.com
   DEPLOY_SA_EMAIL: github-actions-deployer@my-secure-streamlit-app.iam.gserviceaccount.com
+  # --- Workload Identity Federation ---
   WIF_POOL_ID: github-pool
   WIF_PROVIDER_ID: github-provider
   WIF_PROVIDER: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ env.WIF_POOL_ID }}/providers/${{ env.WIF_PROVIDER_ID }}
-  SECRET_ID: my-app-api-key
-  SECRET_ID_ENV_VAR_NAME: MY_APP_API_KEY_SECRET_ID
 
 jobs:
   build-and-deploy:
@@ -54,6 +55,7 @@ jobs:
     - name: Push Docker image
       run: docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
+    # Cloud Run へのデプロイ (env_vars と secrets を完全に削除)
     - name: Deploy to Cloud Run
       id: deploy
       uses: google-github-actions/deploy-cloudrun@v2
@@ -62,8 +64,7 @@ jobs:
         region: ${{ env.REGION }}
         image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
         service_account: ${{ env.APP_SA_EMAIL }}
-        env_vars: |
-          ${{ env.SECRET_ID_ENV_VAR_NAME }}=${{ env.SECRET_ID }}
+        # --- env_vars と secrets の設定を削除 ---
 
     - name: Show Deployed URL
       run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
