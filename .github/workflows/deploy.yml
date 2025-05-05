@@ -8,7 +8,7 @@ on:
 env:
   # --- 基本的な Google Cloud 設定 ---
   PROJECT_ID: my-secure-streamlit-app
-  PROJECT_NUMBER: your-gcp-project-number # ★★★ GCPプロジェクト番号に置き換え ★★★ (gcloud projects describe my-secure-streamlit-app --format='value(projectNumber)' で確認)
+  PROJECT_NUMBER: 154896597931
   GAR_LOCATION: asia-northeast1
   REPOSITORY: my-streamlit-images
   SERVICE_NAME: my-secure-streamlit-app
