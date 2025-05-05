@@ -1,0 +1,36 @@
+
+# Build artifacts
+# Environments
+# Firebase / Emulator
+# IDE / Editor specific
+# Other
+# Python
+# Service account keys (important!)
+# Streamlit cache
+*.class
+*.egg-info/
+*.firebase*
+*.json
+*.log
+*.py[cod]
+*.swo
+*.swp
+.DS_Store
+.env
+.idea/
+.streamlit/cache/
+.venv
+.vscode/
+ENV/
+__pycache__/
+build/
+database-debug.log
+dist/
+env.bak/
+env/
+firebase-debug.log
+firestore-data/
+local_settings.py
+storage-debug.log
+venv.bak/
+venv/

@@ -1,0 +1,22 @@
+# .streamlit/config.toml
+[server]
+port = 8501 # <-- 8080 から 8501 に変更
+headless = true
+enableCORS = false
+
+[logger]
+level = "info"
+
+# Streamlit 0.88以降でヘルスチェックエンドポイントがデフォルト有効
+# [server]
+# enableXsrfProtection = false # Cloud Run内部なら不要かも
+# enableCORS = false
+# headless = true
+# port = 8080
+
+# [browser]
+# serverAddress = "0.0.0.0"
+
+[global]
+# telemetryを無効化
+disableWatchdogWarning = true
