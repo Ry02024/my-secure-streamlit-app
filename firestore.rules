@@ -1,17 +1,57 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ideas コレクションへのアクセス
+
+    // ideas コレクションへのアクセスルール
     match /ideas/{ideaId} {
-      // 認証されたユーザー(Cloud Run のサービスアカウント含む)からの読み取りと作成を許可
-      // 本番では request.auth.uid による制御やデータのバリデーションを追加すべき
-      allow read, create: if request.auth != null;
-      // 更新、削除は今は許可しない
-      allow update, delete: if false;
-    }
-    // 他のパスはアクセス拒否
+
+      // --- 読み取り (Read) ---
+      // 誰がアイデアを読み取れるか？
+      // 例1: ログインしているユーザーなら誰でも読み取れる
+      allow read: if request.auth != null;
+      // 例2: 自分が投稿したアイデアのみ読み取れる (より厳格)
+      // allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+
+      // --- 書き込み (Create) ---
+      // 誰が新しいアイデアを作成できるか？
+      // ルール:
+      // 1. リクエストは認証されている必要がある (request.auth != null)
+      // 2. 書き込もうとしているデータの userId フィールドが、認証ユーザーの ID と一致する
+      // 3. (オプション) タイトルや説明が適切な形式・長さであるかバリデーション
+      function isValidIdea(ideaData) {
+        return ideaData.title is string && ideaData.title.size() > 0 && ideaData.title.size() < 100
+            && ideaData.description is string && ideaData.description.size() > 0 && ideaData.description.size() < 1000;
+            // && ideaData.timestamp == request.time; // タイムスタンプはサーバー側で設定するので不要かも
+      }
+      allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && isValidIdea(request.resource.data);
+
+      // --- 更新 (Update) ---
+      // 誰が既存のアイデアを更新できるか？
+      // 例: 自分が投稿したアイデアのみ更新可能
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId
+                      // && isValidIdea(request.resource.data); // 更新時もバリデーション
+                      // && request.resource.data.keys().hasOnly(['title', 'description', 'timestamp', 'userId']); // 更新可能なフィールドを制限
+                      ;
+
+      // --- 削除 (Delete) ---
+      // 誰がアイデアを削除できるか？
+      // 例: 自分が投稿したアイデアのみ削除可能
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+
+    } // match /ideas/{ideaId} の終わり
+
+    // --- (オプション) アイデア一覧取得のためのルール ---
+    // もし /ideas コレクション全体を list (クエリ) したい場合
+    // allow list: if request.auth != null;
+    // (注意: list ルールは read ルールとは別。個々のドキュメントの read が許可されていても list が拒否されるとクエリできない)
+    // 上記の allow read: if request.auth != null; があれば、基本的な一覧取得は可能になることが多い。
+
+    // 他のすべてのパスへのアクセスはデフォルトで拒否
     match /{document=**} {
       allow read, write: if false;
     }
-  }
+
+  } // match /databases/{database}/documents の終わり
 }

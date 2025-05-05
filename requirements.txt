@@ -1,3 +1,4 @@
 streamlit
 google-cloud-firestore
-google-cloud-secret-manager # Secret Managerを使う場合、クライアントライブラリを追加
+google-cloud-secret-manager
+streamlit-firebase-auth # または選定したライブラリ名

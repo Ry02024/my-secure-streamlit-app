@@ -38,7 +38,8 @@ def add_idea(title: str, description: str):
         doc_ref.set({
             'title': title,
             'description': description,
-            'timestamp': firestore.SERVER_TIMESTAMP # サーバー側のタイムスタンプ
+            'timestamp': firestore.SERVER_TIMESTAMP, # サーバー側のタイムスタンプ
+            'userId': user_id # ★★★ ユーザーIDを追加 ★★★
         })
         logging.info(f"アイデアを追加しました: {doc_ref.id}")
         return doc_ref.id

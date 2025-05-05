@@ -19,7 +19,7 @@ env:
   # --- Workload Identity Federation (IDのみ定義) ---
   WIF_POOL_ID: github-pool
   WIF_PROVIDER_ID: github-provider
-  # --- WIF_PROVIDER の定義は削除 ---
+  FIREBASE_CONFIG_JSON: '{"apiKey": "AIzaSyA6QZbeIlBL4ZvCFm3wrVXMZ20lyJAWmv8","authDomain": "my--streamlit-app.firebaseapp.com","projectId": "my-secure-streamlit-app","storageBucket": "my-secure-streamlit-app.firebasestorage.app","messagingSenderId": "154896597931","appId": "1:154896597931:web:b56f44687e559cd183c8ee","measurementId": "G-T8VKQJVW33"}'
 
 jobs:
   build-and-deploy:
