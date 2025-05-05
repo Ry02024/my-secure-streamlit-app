@@ -13,13 +13,13 @@ env:
   REPOSITORY: my-streamlit-images
   SERVICE_NAME: my-secure-streamlit-app
   REGION: asia-northeast1
-  # ★★★ YOUR_PROJECT_ID を実際のプロジェクトID (my-secure-streamlit-app) に置き換え ★★★
+  # ★★★ プロジェクトID確認 ★★★
   APP_SA_EMAIL: my-streamlit-app-runner@my-secure-streamlit-app.iam.gserviceaccount.com
   DEPLOY_SA_EMAIL: github-actions-deployer@my-secure-streamlit-app.iam.gserviceaccount.com
-  # --- Workload Identity Federation ---
+  # --- Workload Identity Federation (IDのみ定義) ---
   WIF_POOL_ID: github-pool
   WIF_PROVIDER_ID: github-provider
-  WIF_PROVIDER: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ env.WIF_POOL_ID }}/providers/${{ env.WIF_PROVIDER_ID }}
+  # --- WIF_PROVIDER の定義は削除 ---
 
 jobs:
   build-and-deploy:
@@ -38,7 +38,8 @@ jobs:
       id: auth
       uses: google-github-actions/auth@v2
       with:
-        workload_identity_provider: ${{ env.WIF_PROVIDER }}
+        # --- ここで WIF_PROVIDER を組み立てる ---
+        workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ env.WIF_POOL_ID }}/providers/${{ env.WIF_PROVIDER_ID }}
         service_account: ${{ env.DEPLOY_SA_EMAIL }}
 
     - name: Set up Cloud SDK
@@ -55,7 +56,6 @@ jobs:
     - name: Push Docker image
       run: docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
-    # Cloud Run へのデプロイ (env_vars と secrets を完全に削除)
     - name: Deploy to Cloud Run
       id: deploy
       uses: google-github-actions/deploy-cloudrun@v2
@@ -64,7 +64,6 @@ jobs:
         region: ${{ env.REGION }}
         image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
         service_account: ${{ env.APP_SA_EMAIL }}
-        # --- env_vars と secrets の設定を削除 ---
 
-    # - name: Show Deployed URL
-    #   run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
+    - name: Show Deployed URL
+      run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
