@@ -65,5 +65,5 @@ jobs:
         image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
         service_account: ${{ env.APP_SA_EMAIL }}
 
-    - name: Show Deployed URL
-      run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
+    # - name: Show Deployed URL
+    #   run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
