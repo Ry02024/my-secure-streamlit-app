@@ -40,6 +40,7 @@ jobs:
       with:
         # --- ここで WIF_PROVIDER を組み立てる ---
         workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ env.WIF_POOL_ID }}/providers/${{ env.WIF_PROVIDER_ID }}
+        audience: https://token.actions.githubusercontent.com
         service_account: ${{ env.DEPLOY_SA_EMAIL }}
 
     - name: Set up Cloud SDK
