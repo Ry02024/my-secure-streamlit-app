@@ -1,61 +1,60 @@
-name: Build and Deploy to Cloud Run
+name: Build and Deploy Streamlit App to Cloud Run
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [ "main" ] # main ブランチへの push でトリガー
 
 env:
-  # --- 基本的な Google Cloud 設定 ---
-  PROJECT_ID: my-secure-streamlit-app
-  PROJECT_NUMBER: 154896597931
-  GAR_LOCATION: asia-northeast1
-  REPOSITORY: my-streamlit-images
-  SERVICE_NAME: my-secure-streamlit-app
-  REGION: asia-northeast1
-  # ★★★ プロジェクトID確認 ★★★
-  APP_SA_EMAIL: my-streamlit-app-runner@my-secure-streamlit-app.iam.gserviceaccount.com
-  DEPLOY_SA_EMAIL: github-actions-deployer@my-secure-streamlit-app.iam.gserviceaccount.com
-  # --- Workload Identity Federation (IDのみ定義) ---
-  WIF_POOL_ID: github-pool
-  WIF_PROVIDER_ID: github-provider
-  FIREBASE_CONFIG_JSON: '{"apiKey": "AIzaSyA6QZbeIlBL4ZvCFm3wrVXMZ20lyJAWmv8","authDomain": "my--streamlit-app.firebaseapp.com","projectId": "my-secure-streamlit-app","storageBucket": "my-secure-streamlit-app.firebasestorage.app","messagingSenderId": "154896597931","appId": "1:154896597931:web:b56f44687e559cd183c8ee","measurementId": "G-T8VKQJVW33"}'
+  PROJECT_ID: your-project-id # <<< 要変更: あなたのGCPプロジェクトID
+  REGION: asia-northeast1 # <<< 要変更: デプロイするリージョン
+  SERVICE_NAME: your-chat-app-name # <<< 要変更: Cloud Run サービス名
+  ARTIFACT_REGISTRY: your-artifact-registry-repo # <<< 要変更: Artifact Registry リポジトリ名
+  GAR_LOCATION: asia-northeast1 # <<< 要変更: Artifact Registry のリージョン
+  # Cloud Run に割り当てるサービスアカウント
+  APP_SA_EMAIL: your-app-service-account@your-project-id.iam.gserviceaccount.com # <<< 要変更
+  # Cloud Functions の HTTPS Trigger URL
+  CHAT_API_FUNCTION_URL: https://your-function-url.a.run.app # <<< 要変更: デプロイ後に取得
+  # (オプション) 事前承認済みユーザーリストなど
+  # PREAUTHORIZED_EMAILS: "user1@example.com,user2@example.com"
+  # ALLOWED_CHAT_PARTNERS: "user1@example.com,user2@example.com"
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy
+  deploy:
     runs-on: ubuntu-latest
-
     permissions:
       contents: 'read'
-      id-token: 'write'
+      id-token: 'write' # Workload Identity Federation に必要
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Authenticate to Google Cloud
+    - name: Authenticate to Google Cloud (Workload Identity Federation)
       id: auth
       uses: google-github-actions/auth@v2
       with:
-        # --- ここで WIF_PROVIDER を組み立てる ---
-        workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ env.WIF_POOL_ID }}/providers/${{ env.WIF_PROVIDER_ID }}
-        audience: https://token.actions.githubusercontent.com
-        service_account: ${{ env.DEPLOY_SA_EMAIL }}
+        # !!! 重要: この値はあなたの GCP WIF 設定に合わせて手動で変更してください !!!
+        workload_identity_provider: 'projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/your-pool-id/providers/your-provider-id'
+        # デプロイ操作を行うサービスアカウント (Deploy SA)
+        service_account: your-deploy-sa@your-project-id.iam.gserviceaccount.com # <<< 要変更
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: ${{ env.PROJECT_ID }}
 
-    - name: Configure Docker
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Configure Docker for Artifact Registry
       run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev --quiet
 
-    - name: Build Docker image
-      run: docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
-
-    - name: Push Docker image
-      run: docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: . # Dockerfile がルートにあるためコンテキストは .
+        push: true
+        tags: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Deploy to Cloud Run
       id: deploy
@@ -63,8 +62,26 @@ jobs:
       with:
         service: ${{ env.SERVICE_NAME }}
         region: ${{ env.REGION }}
-        image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        # ビルドしたイメージを指定
+        image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        # サービスアカウントをCloud Runサービスに割り当て
         service_account: ${{ env.APP_SA_EMAIL }}
+        # Secret Manager から OAuth 情報と Cookie 情報を環境変数としてマウント
+        secrets: |-
+          GOOGLE_CLIENT_ID=google-client-id:latest
+          GOOGLE_CLIENT_SECRET=google-client-secret:latest
+          COOKIE_KEY=cookie-key:latest
+          COOKIE_NAME=cookie-name:latest
+        # 環境変数を設定 (Function URL など)
+        env_vars: |-
+          CHAT_API_FUNCTION_URL=${{ env.CHAT_API_FUNCTION_URL }}
+          # 必要に応じて他の環境変数も設定
+          # PREAUTHORIZED_EMAILS=${{ env.PREAUTHORIZED_EMAILS }}
+          # ALLOWED_CHAT_PARTNERS=${{ env.ALLOWED_CHAT_PARTNERS }}
+        # 必要に応じて他の Cloud Run 設定を追加
+        # memory: "512Mi"
+        # cpu: "1"
+        # concurrency: 80
 
-    # - name: Show Deployed URL
-    #   run: echo "Deployed URL: ${{ steps.deploy.outputs.url }}"
+    - name: Show Cloud Run Service URL
+      run: echo "Cloud Run Service URL: ${{ steps.deploy.outputs.url }}"

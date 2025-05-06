@@ -1,40 +1,39 @@
-
-# Build artifacts
-# Docker Compose
-# Environments
-# Firebase / Emulator
-# IDE / Editor specific
-# Other
 # Python
-# Service account keys (important!)
-# Streamlit cache
-*.class
-*.egg-info/
-*.firebase*
-*.json
-*.log
-*.py[cod]
-*.swo
-*.swp
-.DS_Store
-.env
-.idea/
-.streamlit/cache/
-.venv
-.vscode/
-ENV/
 __pycache__/
-build/
-database-debug.log
-dist/
-docker-compose.override.yml
-emulator-data/  # firebase-tools イメージ使用時のエクスポート先例
-env.bak/
+*.pyc
+*.pyo
+*.pyd
+.Python
 env/
-firebase-debug.log
-firestore-data/
-firestore-data/ # Docker Compose で永続化する場合のデータディレクトリ
-local_settings.py
-storage-debug.log
-venv.bak/
 venv/
+ENV/
+pip-freeze.txt
+pip-selfcheck.json
+
+# IDE/Editor specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets / Config
+streamlit_app/config.yaml
+secrets/
+.env
+*.json
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Terraform state files
+*.tfstate
+*.tfstate.backup
+
+# Firebase cache/logs
+.firebase/
+firebase-debug.log
+database-debug.log
+firestore-debug.log
+storage-debug.log
+ui-debug.log
