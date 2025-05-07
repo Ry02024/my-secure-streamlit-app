@@ -6,14 +6,16 @@ import streamlit as st # st.session_state を使うため
 import json # JSON パース用
 
 # --- 定数 ---
-# デプロイした Cloud Functions の URL を環境変数から取得
+# # デプロイした Cloud Functions の URL を環境変数から取得
+# FUNCTION_URL = os.environ.get("CHAT_API_FUNCTION_URL")
+# if not FUNCTION_URL:
+#     # 環境変数が設定されていない場合は警告を表示 (ローカル実行時など)
+#     st.warning("環境変数 CHAT_API_FUNCTION_URL が設定されていません。API呼び出しは失敗します。")
+#     # ローカルテスト用にデフォルト値を設定する場合 (非推奨)
+#     # FUNCTION_URL = "http://localhost:8081" # ローカル Functions Emulator の URL
 FUNCTION_URL = os.environ.get("CHAT_API_FUNCTION_URL")
 if not FUNCTION_URL:
-    # 環境変数が設定されていない場合は警告を表示 (ローカル実行時など)
-    st.warning("環境変数 CHAT_API_FUNCTION_URL が設定されていません。API呼び出しは失敗します。")
-    # ローカルテスト用にデフォルト値を設定する場合 (非推奨)
-    # FUNCTION_URL = "http://localhost:8081" # ローカル Functions Emulator の URL
-
+    st.warning("環境変数 CHAT_API_FUNCTION_URL が設定されていません。ローカルテストモードで動作します。")
 jst = pytz.timezone('Asia/Tokyo')
 
 # --- ヘルパー関数 ---

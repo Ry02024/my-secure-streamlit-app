@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/  # <--- これを追加 (ドット付きの仮想環境名)
 ENV/
 pip-freeze.txt
 pip-selfcheck.json
@@ -19,8 +20,8 @@ pip-selfcheck.json
 # Secrets / Config
 streamlit_app/config.yaml
 secrets/
-.env
-*.json
+.env  # .env ファイルも無視対象に (重要)
+*.json # ルート直下の全ての .json ファイルを無視 (用途によっては見直し)
 
 # OS specific
 .DS_Store

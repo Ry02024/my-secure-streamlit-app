@@ -1,6 +1,6 @@
 import streamlit as st
 import yaml
-from streamlit_authenticator.authenticate import Authenticate
+from streamlit_authenticator import Authenticate
 from streamlit_authenticator.utilities.exceptions import LoginError #, RegisterError, ForgotError # 必要に応じて
 import os
 import sys
